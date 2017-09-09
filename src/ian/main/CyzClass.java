@@ -7,5 +7,7 @@ public class CyzClass {
 	
 	public static void mode() {
 		
+		
+		
 	}
 }
