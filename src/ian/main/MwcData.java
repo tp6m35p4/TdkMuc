@@ -15,8 +15,12 @@ public class MwcData {
     public boolean armed;
     public boolean baro_mode;
     
+    public int sonarFront;
+    public int sonarLeft;
+    public int sonarRight;
     
-    public void setData(byte[] data) {
+    
+    public MwcData setData(byte[] data) {
     	ByteBuffer byteBuffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < rc.length; i++) {
             rc[i] = byteBuffer.getShort();
@@ -32,5 +36,11 @@ public class MwcData {
         angle_mode = (tmp & (1 << 1)) != 0;
         armed      = (tmp & (1 << 2)) != 0;
         baro_mode  = (tmp & (1 << 3)) != 0;
+        return this;
+    }
+    
+    public MwcData setOtherData(byte[] data) {
+    	
+    	return this;
     }
 }

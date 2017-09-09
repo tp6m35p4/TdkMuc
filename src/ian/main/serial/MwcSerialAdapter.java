@@ -4,17 +4,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import javax.xml.ws.WebServiceException;
-
 import com.pi4j.io.gpio.exception.UnsupportedBoardType;
-import com.sun.xml.internal.ws.Closeable;
 
 import ian.main.serial.exception.DataNotReadyException;
 import ian.main.serial.exception.NoConnectedException;
 import ian.main.serial.exception.TimeOutException;
 import ian.main.serial.exception.UnknownErrorException;
 
-public class MwcSerialAdapter implements Closeable {
+public class MwcSerialAdapter {
 	private final MwcSerial serial = new MwcSerial();
 	public MwcSerialAdapter() {
 		
@@ -23,14 +20,8 @@ public class MwcSerialAdapter implements Closeable {
 		serial.open();
 		return this;
 	}
-	@Override
-	public void close() throws WebServiceException {
-		try {
-			serial.close();
-			System.out.println("bye~");
-		} catch (IllegalStateException | IOException e) {
-			throw new WebServiceException(e);
-		}
+	public void close() throws IllegalStateException, IOException {
+		serial.close();
 	}
 	
 	public short[] getRc() throws IOException, NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException {

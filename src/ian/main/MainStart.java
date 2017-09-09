@@ -3,9 +3,8 @@ package ian.main;
 import java.io.IOException;
 import java.util.Date;
 
-import javax.xml.ws.WebServiceException;
-
 import com.pi4j.io.gpio.exception.UnsupportedBoardType;
+import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
 import ian.main.serial.MwcSerialAdapter;
 import ian.main.serial.exception.DataNotReadyException;
@@ -14,16 +13,32 @@ import ian.main.serial.exception.TimeOutException;
 import ian.main.serial.exception.UnknownErrorException;
 
 public class MainStart {
+	/* 高度誤差範圍 */
+	static final int altError = 0;
+	
+	
+	static MwcSerialAdapter mwc;
+	static LedAndOtherControler loc;
+	
 	static MwcData info = new MwcData();
 	static MwcSetData setRc = new MwcSetData();
 	
 	static int step = 0;
-	static int wantFront = 0;
-	
-	static boolean armMode = false;
-	static boolean baroMode = false;
 	
 	
+	
+	
+	static int setWantAlt = 0;
+	
+	// ------------------error flag-----------------
+	static int mwcError = 0;
+	static int ledError = 0;
+	static int modeError = 0;
+	// ------------------error flag-----------------
+	
+	// ------------------mode flag------------------
+	static int armMode = 0;
+	static int baroMode = 0;
 	/*
 	 * 1 : 1100
 	 * 2 : 1800
@@ -31,21 +46,18 @@ public class MainStart {
 	 * other : 0
 	 */
 	static int throttleMode = 0;
+	static int setWantAltMode = 0;
+	// ------------------mode flag------------------
 	
-	
-	
-	/* 高度誤差範圍 */
-	static final int altError = 0;
-	
-	static void stl(MwcSerialAdapter mwc) throws NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException, IOException {
+	static void stl() {
 		switch (step) {
 		case 0:
 			step = 1;
 			
 			throttleMode = 0;
 			
-			armMode = false;
-			baroMode = false;
+			armMode = 0;
+			baroMode = 0;
 			
 			
 			break;
@@ -55,7 +67,7 @@ public class MainStart {
 			}
 			break;
 		case 10: // 解鎖油門
-			armMode = true;
+			armMode = 1;
 			throttleMode = 1;
 			if (info.armed) {
 				createTimer();
@@ -75,14 +87,15 @@ public class MainStart {
 			break;
 		case 13: // 設定高度120cm
 			throttleMode = 3;
-			baroMode = true;
+			baroMode = 1;
 			if (info.baro_mode) {
-				mwc.setAltHold(120);
+				setWantAltMode = 1;
+				setWantAlt = 120;
 				step = 14;
 			}
 			break;
 		case 14: // 等待至120
-			if (Math.abs(info.altEstAlt - 120) < altError) {
+			if (Math.abs(info.altEstAlt - 120) <= altError) {
 				step = 15;
 			}
 			break;
@@ -90,23 +103,29 @@ public class MainStart {
 			step = 100;
 			break;
 		case 100: // 終點降落
-			mwc.setAltHold(0);
+			setWantAltMode = 1;
+			setWantAlt = 0;
+			step = 101;
+			break;
+		case 101:
 			if (info.altEstAlt < 5) {
-				step = 101;
+				step = 102;
 			}
 			break;
-		case 101: // 上鎖油門
+		case 102: // 上鎖油門
 			throttleMode = 1;
-			armMode = false;
-			baroMode = false;
+			armMode = 0;
+			baroMode = 0;
 			break;
 		default:
 			break;
 		}
 	}
 	static void mode() {
-		setRc.setAux1(armMode  ? 1900 : 1100);
-		setRc.setAux2(baroMode ? 1900 : 1100);
+		setRc.setAux1(armMode == 1  ? 1900 : 1100);
+		setRc.setAux2(baroMode == 1 ? 1900 : 1100);
+		
+		
 		
 		switch (throttleMode) {
 		case 1:
@@ -123,6 +142,9 @@ public class MainStart {
 			break;
 		}
 		
+		
+		CyzClass.mode();
+		
 	}
 	
 	static long time;
@@ -137,28 +159,63 @@ public class MainStart {
 		return new Date().getTime();
 	}
 	public static void main(String[] args) {
+		try {
+			mwc = new MwcSerialAdapter().open();
+			loc = new LedAndOtherControler().init();
+		} catch (UnsupportedBoardType | IOException | InterruptedException | UnsupportedBusNumberException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 		
-		
-		try(MwcSerialAdapter mwc = new MwcSerialAdapter().open()) {
-			while (true) {
-				setRc.reset();
+		while (true) {
+			setRc.reset();
+			
+			
+			try {
 				info.setData(mwc.getRpi());
-				
-				
-				if (info.rc[7] < 1700) { // ems
-					step = 0;
-				} else {
-					stl(mwc);
-					mode();
-				}
-				
-				mwc.setRc(setRc.getData());
+				mwcError = 0;
+			} catch(NoConnectedException | TimeOutException | DataNotReadyException | UnknownErrorException | IOException e) {
+				mwcError = 1;
+				e.printStackTrace();
 			}
 			
-		} catch (WebServiceException | UnsupportedBoardType | IOException | InterruptedException | IllegalStateException | UnknownErrorException | DataNotReadyException | TimeOutException | NoConnectedException e) {
-			e.printStackTrace();
-		} finally {
+			try {
+				info.setOtherData(loc.getSonar());
+				ledError = 0;
+			} catch(IOException e) {
+				ledError = 1;
+				e.printStackTrace();
+			}
 			
-		}
+			
+			
+			if (mwcError != 0 && info.rc[7] < 1700) { // ems
+				step = 0;
+			} else {
+				try {
+					stl();
+					mode();
+					modeError = 0;
+				} catch(Exception e) {
+					modeError = 1;
+					e.printStackTrace();
+				}
+				
+			}
+			
+			try {
+				if (mwcError == 0) {
+					mwc.setRc(setRc.getData());
+					if (setWantAltMode == 1) {
+						mwc.setAltHold(setWantAlt);
+						setWantAltMode = 0;
+					}					
+				}
+			} catch (DataNotReadyException | NoConnectedException | TimeOutException | UnknownErrorException | IOException e) {
+				e.printStackTrace();
+			}
+			
+			
+		}		
 	}
 }
