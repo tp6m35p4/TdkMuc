@@ -28,6 +28,7 @@ public class MainStart {
 	
 	
 	
+	
 	static int setWantAlt = 0;
 	
 	// ------------------error flag-----------------
