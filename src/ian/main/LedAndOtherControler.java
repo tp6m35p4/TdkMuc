@@ -16,8 +16,9 @@ public class LedAndOtherControler {
 	private I2CDevice i2cDevice;
 	
 	private Color[] ledColors = new Color[LED_COUNT];
-	private int ledMode = 0;
 	private boolean isLedChange = false;
+	
+	private int ledStep = 0;
 	
 	public LedAndOtherControler setLed(int index, Color color) {
 		ledColors[index] = color;
@@ -30,18 +31,24 @@ public class LedAndOtherControler {
 		return this;
 	}
 	
+	public LedAndOtherControler next() {
+		for (int i = 0; i < 4; i++) {
+			setLed(i, i == ledStep ? Color.RED : Color.BLACK);
+		}
+		if (++ledStep > 3) {
+			ledStep = 0;
+		}
+		return this;
+	}
+	
 	
 	public LedAndOtherControler updateLed() throws IOException {
 		if (isLedChange) {
-			if (ledMode == 0) {
-				ByteBuffer buffer = ByteBuffer.allocate(LED_COUNT * 4);
-				for (Color ledColor : ledColors) {
-					ledColor.putBgraPreBytes(buffer);
-				}
-				i2cDevice.write(buffer.array());				
-			} else {
-				i2cDevice.write((byte) ledMode);
+			ByteBuffer buffer = ByteBuffer.allocate(LED_COUNT * 4);
+			for (Color ledColor : ledColors) {
+				ledColor.putBgraPreBytes(buffer);
 			}
+			i2cDevice.write(buffer.array());
 			
 		}
 		return this;

@@ -159,7 +159,7 @@ public class MainStart {
 	static long getTime() {
 		return new Date().getTime();
 	}
-	public static void main(String[] args) {
+	public static void run(String[] args) {
 		try {
 			mwc = new MwcSerialAdapter().open();
 			loc = new LedAndOtherControler().init();
@@ -176,7 +176,7 @@ public class MainStart {
 				info.setData(mwc.getRpi());
 				mwcError = 0;
 			} catch(NoConnectedException | TimeOutException | DataNotReadyException | UnknownErrorException | IOException e) {
-				mwcError = 1;
+				mwcError++;
 				e.printStackTrace();
 			}
 			
@@ -184,7 +184,7 @@ public class MainStart {
 				info.setOtherData(loc.getSonar());
 				ledError = 0;
 			} catch(IOException e) {
-				ledError = 1;
+				ledError++;
 				e.printStackTrace();
 			}
 			
@@ -198,7 +198,7 @@ public class MainStart {
 					mode();
 					modeError = 0;
 				} catch(Exception e) {
-					modeError = 1;
+					modeError++;
 					e.printStackTrace();
 				}
 				
@@ -216,7 +216,29 @@ public class MainStart {
 				e.printStackTrace();
 			}
 			
+			if (ledError != 0 || modeError != 0 || modeError > 4) {
+				break;
+			}
+			try {
+				loc.next().updateLed();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			
-		}		
+			
+		}
+		try {
+			mwc.close();
+		} catch (IllegalStateException | IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void main(String[] args) {
+		run(args);
+		// test(args);
+	}
+	public static void test(String[] args) {
+		
 	}
 }
