@@ -1,16 +1,17 @@
 package ian.main;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
-import com.sun.prism.paint.Color;
 
-public class LedAndOtherControler {
-	private static final int LED_COUNT = 4;
+public class LedAndOtherController {
+	private static final int LED_COUNT = 2;
 	private static final byte I2C_ADDR = 0x12;
 	
 	private I2CDevice i2cDevice;
@@ -18,35 +19,36 @@ public class LedAndOtherControler {
 	private Color[] ledColors = new Color[LED_COUNT];
 	private boolean isLedChange = false;
 	
-	private int ledStep = 0;
+	{
+		for (int i = 0; i < ledColors.length; i++) {
+			ledColors[i] = new Color(0);
+		}
+	}
 	
-	public LedAndOtherControler setLed(int index, Color color) {
-		ledColors[index] = color;
+	
+	public LedAndOtherController setLed(int index, Color color) {
+		if (ledColors[index].getRGB() != color.getRGB()) {
+			ledColors[index] = color;
+			isLedChange = true;
+		}
 		return this;
 	}
-	public LedAndOtherControler setAllLed(Color color) {
+	public LedAndOtherController setAllLed(Color color) {
 		for (int i = 0; i < LED_COUNT; i++) {
 			setLed(i, color);
 		}
 		return this;
 	}
 	
-	public LedAndOtherControler next() {
-		for (int i = 0; i < 4; i++) {
-			setLed(i, i == ledStep ? Color.RED : Color.BLACK);
-		}
-		if (++ledStep > 3) {
-			ledStep = 0;
-		}
-		return this;
-	}
 	
 	
-	public LedAndOtherControler updateLed() throws IOException {
+	
+	public LedAndOtherController updateLed() throws IOException {
 		if (isLedChange) {
-			ByteBuffer buffer = ByteBuffer.allocate(LED_COUNT * 4);
+			isLedChange = false;
+			ByteBuffer buffer = ByteBuffer.allocate(LED_COUNT * 4).order(ByteOrder.BIG_ENDIAN);
 			for (Color ledColor : ledColors) {
-				ledColor.putBgraPreBytes(buffer);
+				buffer.putInt(ledColor.getRGB());
 			}
 			i2cDevice.write(buffer.array());
 			
@@ -58,8 +60,8 @@ public class LedAndOtherControler {
 		i2cDevice.read(data, 0, data.length);
 		return data;
 	}
-	public LedAndOtherControler init() throws UnsupportedBusNumberException, IOException {
-		I2CBus i2c = I2CFactory.getInstance(I2CBus.BUS_2);
+	public LedAndOtherController init() throws UnsupportedBusNumberException, IOException {
+		I2CBus i2c = I2CFactory.getInstance(I2CBus.BUS_1);
 		i2cDevice = i2c.getDevice(I2C_ADDR);
 		return this;
 	}

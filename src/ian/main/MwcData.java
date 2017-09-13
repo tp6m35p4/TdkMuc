@@ -40,7 +40,10 @@ public class MwcData {
     }
     
     public MwcData setOtherData(byte[] data) {
-    	
+    	ByteBuffer byteBuffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
+    	sonarFront = byteBuffer.getShort();
+    	sonarLeft = byteBuffer.getShort();
+    	sonarRight = byteBuffer.getShort();
     	return this;
     }
 }

@@ -1,5 +1,6 @@
 package ian.main;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.util.Date;
 
@@ -7,18 +8,15 @@ import com.pi4j.io.gpio.exception.UnsupportedBoardType;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
 import ian.main.serial.MwcSerialAdapter;
-import ian.main.serial.exception.DataNotReadyException;
-import ian.main.serial.exception.NoConnectedException;
-import ian.main.serial.exception.TimeOutException;
-import ian.main.serial.exception.UnknownErrorException;
 
 public class MainStart {
 	/* 高度誤差範圍 */
 	static final int altError = 0;
-	
+	/* stl test mode */
+	static final boolean isStlTest = true;
 	
 	static MwcSerialAdapter mwc;
-	static LedAndOtherControler loc;
+	static LedAndOtherController loc;
 	
 	static MwcData info = new MwcData();
 	static MwcSetData setRc = new MwcSetData();
@@ -26,10 +24,17 @@ public class MainStart {
 	static int step = 0;
 	
 	
-	
+	static int ledStep = 0;
 	
 	
 	static int setWantAlt = 0;
+	
+	// ------------------time-----------------------
+	static long mwcErrorTime = 0;
+	static long ledUpdateTime = 0;
+	static long ledStepTime = 0;
+	// ------------------time-----------------------
+	
 	
 	// ------------------error flag-----------------
 	static int mwcError = 0;
@@ -48,18 +53,35 @@ public class MainStart {
 	 */
 	static int throttleMode = 0;
 	static int setWantAltMode = 0;
+	static int ledMode = 0;
 	// ------------------mode flag------------------
+	
+	static void stlTest() {
+
+		
+		switch (step) {
+		case 0:
+			step = 1;
+			ledMode = 3;
+			createTimer();
+			break;
+		case 1:
+			if (timerOn(5000)) {
+				step = 2;
+			}
+			break;
+		case 2:
+			step = 3;
+			ledMode = 2;
+			System.out.println("ok");
+			break;
+		}
+	}
 	
 	static void stl() {
 		switch (step) {
 		case 0:
 			step = 1;
-			
-			throttleMode = 0;
-			
-			armMode = 0;
-			baroMode = 0;
-			
 			
 			break;
 		case 1:
@@ -146,6 +168,28 @@ public class MainStart {
 		
 		CyzClass.mode();
 		
+		switch (ledMode) {
+		case 1:
+			loc.setAllLed(Color.BLACK);
+			if (getTime() - ledStepTime > 200) {
+				ledStepTime = getTime();
+				loc.setLed(ledStep, Color.RED);
+				if (++ledStep >= 2) {
+					ledStep = 0;
+				}
+			}
+			break;
+		case 2:
+			loc.setAllLed(Color.GREEN);
+			break;
+		case 3:
+			loc.setLed(0, Color.RED).setLed(1, Color.GREEN);
+			break;
+		default:
+			loc.setAllLed(Color.BLACK);
+			break;
+		}
+		
 	}
 	
 	static long time;
@@ -162,7 +206,7 @@ public class MainStart {
 	public static void run(String[] args) {
 		try {
 			mwc = new MwcSerialAdapter().open();
-			loc = new LedAndOtherControler().init();
+			loc = new LedAndOtherController().init();
 		} catch (UnsupportedBoardType | IOException | InterruptedException | UnsupportedBusNumberException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -171,30 +215,47 @@ public class MainStart {
 		while (true) {
 			setRc.reset();
 			
+			info.rc[7] = 1850;
+//			try {
+//				info.setData(mwc.getRpi());
+//				mwcError = 0;
+//			} catch(NoConnectedException | TimeOutException | DataNotReadyException | UnknownErrorException | IOException e) {
+//				if (mwcError == 0) {
+//					mwcErrorTime = getTime();
+//				}
+//				mwcError++;
+//				e.printStackTrace();
+//			}
 			
-			try {
-				info.setData(mwc.getRpi());
-				mwcError = 0;
-			} catch(NoConnectedException | TimeOutException | DataNotReadyException | UnknownErrorException | IOException e) {
-				mwcError++;
-				e.printStackTrace();
+			if (getTime() - ledUpdateTime > 250) {
+				try {
+					info.setOtherData(loc.getSonar());
+					ledError = 0;
+				} catch(IOException e) {
+					ledError++;
+					e.printStackTrace();
+				}
+				ledUpdateTime = getTime();
 			}
 			
-			try {
-				info.setOtherData(loc.getSonar());
-				ledError = 0;
-			} catch(IOException e) {
-				ledError++;
-				e.printStackTrace();
-			}
 			
 			
 			
-			if (mwcError != 0 && info.rc[7] < 1700) { // ems
+			if (info.rc[7] < 1700) { // ems
 				step = 0;
+				
+				throttleMode = 0;
+				armMode = 0;
+				baroMode = 0;
+				setWantAltMode = 0;
+				ledMode = 0;
 			} else {
 				try {
-					stl();
+					if (isStlTest) {
+						stlTest();
+					} else {
+						stl();
+					}
 					mode();
 					modeError = 0;
 				} catch(Exception e) {
@@ -204,23 +265,30 @@ public class MainStart {
 				
 			}
 			
-			try {
-				if (mwcError == 0) {
-					mwc.setRc(setRc.getData());
-					if (setWantAltMode == 1) {
-						mwc.setAltHold(setWantAlt);
-						setWantAltMode = 0;
-					}					
-				}
-			} catch (DataNotReadyException | NoConnectedException | TimeOutException | UnknownErrorException | IOException e) {
-				e.printStackTrace();
-			}
+//			try {
+//				if (mwcError == 0) {
+//					mwc.setRc(setRc.getData());
+//					if (setWantAltMode == 1) {
+//						mwc.setAltHold(setWantAlt);
+//						setWantAltMode = 0;
+//					}					
+//				}
+//			} catch (DataNotReadyException | NoConnectedException | TimeOutException | UnknownErrorException | IOException e) {
+//				e.printStackTrace();
+//			}
 			
-			if (ledError != 0 || modeError != 0 || modeError > 4) {
+			if (ledError != 0 || modeError != 0 || (mwcError != 0 && (getTime() - mwcErrorTime > 800))) {
+				System.out.print("ledError = ");
+				System.out.println(ledError);
+				System.out.print("modeError = ");
+				System.out.println(modeError);
+				System.out.print("mwcError = ");
+				System.out.println(mwcError);
+				
 				break;
 			}
 			try {
-				loc.next().updateLed();
+				loc.updateLed();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
