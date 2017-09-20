@@ -28,7 +28,7 @@ public class MwcSerial {
 	}
 	
 	
-	private static final long TIME_OUT = 1000;
+	private static final long TIME_OUT = 100;
     private byte[] getData(boolean isBin) throws IOException, TimeOutException, DataNotReadyException, UnknownErrorException {
         long timeSpan = new Date().getTime();
         long delay = 0;
