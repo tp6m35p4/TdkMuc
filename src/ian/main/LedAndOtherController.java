@@ -14,6 +14,7 @@ public class LedAndOtherController {
 	private static final int LED_COUNT = 2;
 	private static final byte I2C_ADDR = 0x12;
 	
+	private I2CBus i2c;
 	private I2CDevice i2cDevice;
 	
 	private Color[] ledColors = new Color[LED_COUNT];
@@ -56,13 +57,17 @@ public class LedAndOtherController {
 		return this;
 	}
 	public byte[] getSonar() throws IOException {
-		byte[] data = new byte[6];
+		byte[] data = new byte[MwcData.OTHER_DATA_LEN];
 		i2cDevice.read(data, 0, data.length);
 		return data;
 	}
 	public LedAndOtherController init() throws UnsupportedBusNumberException, IOException {
-		I2CBus i2c = I2CFactory.getInstance(I2CBus.BUS_1);
+		i2c = I2CFactory.getInstance(I2CBus.BUS_1);
 		i2cDevice = i2c.getDevice(I2C_ADDR);
 		return this;
+	}
+
+	public void close() throws IOException {
+		i2c.close();
 	}
 }

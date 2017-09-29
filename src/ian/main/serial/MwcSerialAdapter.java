@@ -26,9 +26,7 @@ public class MwcSerialAdapter {
 	
 	public short[] getRc() throws IOException, NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException {
 		short outt[] = new short[8];
-		ByteBuffer
-				.wrap(
-						serial.getData(MwcSerial.Cmd.MSP_RC))
+		ByteBuffer.wrap(serial.getData(MwcSerial.Cmd.MSP_RC))
 				.order(ByteOrder.LITTLE_ENDIAN)
 				.asShortBuffer()
 				.get(outt);
@@ -49,7 +47,9 @@ public class MwcSerialAdapter {
 		return serial.getData(MwcSerial.Cmd.MSP_RPI);
 	}
 	
-	public void setAltHold(int data) throws NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException, IOException {
-		serial.setData(MwcSerial.Cmd.MSP_SET_ALT_HOLD, ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(data).array());
+	public byte[] getDebug() throws NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException, IOException {
+		return serial.getData(MwcSerial.Cmd.MSP_DEBUG);
 	}
+	
+	
 }

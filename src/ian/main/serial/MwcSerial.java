@@ -28,13 +28,17 @@ public class MwcSerial {
 	}
 	
 	
-	private static final long TIME_OUT = 100;
+	private static final long TIME_OUT = 250;
     private byte[] getData(boolean isBin) throws IOException, TimeOutException, DataNotReadyException, UnknownErrorException {
-        long timeSpan = new Date().getTime();
+    	
+    	long timeSpan = new Date().getTime();
+    	
         long delay = 0;
+        
+        
 
         while (delay < TIME_OUT && tryToGetData() != 0) {
-            delay = new Date().getTime() - timeSpan;
+        	delay = new Date().getTime() - timeSpan;
         }
         if (delay >= TIME_OUT) {
             throw new TimeOutException(tryToGetData());
@@ -43,13 +47,19 @@ public class MwcSerial {
     }
 
     public byte[] getData(byte cmd) throws IOException, NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException {
-        sendByteArray(cmd);
+//        switch (cmd) {
+//        case Cmd.MSP_RPI:
+//        	return new byte[57];
+//		default:
+//			throw new RuntimeException(String.valueOf(cmd));
+//        }
+    	sendByteArray(cmd);
         return getData(false);
     }
 
     public void setData(byte cmd, byte[] data) throws IOException, NoConnectedException, TimeOutException, DataNotReadyException, UnknownErrorException {
-        sendByteArray(cmd, data);
-        getData(false);
+         sendByteArray(cmd, data);
+         getData(false);
     }
 	
 	public void open() throws UnsupportedBoardType, IOException, InterruptedException {
@@ -65,6 +75,8 @@ public class MwcSerial {
 		serial.open(config);
 	}
 	public void close() throws IllegalStateException, IOException {
+		serial.getInputStream().close();
+		serial.getOutputStream().close();
 		serial.close();
 		q.clear();
 	}
@@ -73,11 +85,12 @@ public class MwcSerial {
         sendByteArray(cmd, null);
     }
 
-	private void sendByteArray(byte cmd, byte[] data) throws NoConnectedException, IOException {
+	public void sendByteArray(byte cmd, byte[] data) throws NoConnectedException, IOException {
         if (!serial.isOpen()) {
             throw new NoConnectedException();
         }
         byte crc = cmd;
+        
         if (data != null) {
             crc ^= (byte)data.length;
             for (byte i : data) {
@@ -90,11 +103,20 @@ public class MwcSerial {
         serial.write(new byte[]{'$', 'M', '<'});
         serial.write(data != null ? (byte) data.length : 0);
         serial.write(cmd);
+        
         if (data != null) {
+//        	for (byte eachData : data) {
+//        		// serial.write(eachData);
+//        		// serial.getOutputStream().write(eachData);
+//        		
+//        	}
+        	// serial.getOutputStream().write(data);
         	serial.write(data);
         }
+        
         serial.write(crc);
         serial.flush();
+        
 //        Log.i("sendByteArray", "----------------------------");
 //        Log.i("sendByteArray", "cmd = " + String.valueOf(cmd) + " , crc = " + String.valueOf(crc));
 //        if (data != null) {
@@ -136,7 +158,7 @@ public class MwcSerial {
     }
 
     private int tryToGetData() throws IOException {
-        while (!serial.isClosed() &&serial.available() > 0 && !q.isFull()) {
+        while (!serial.isClosed() && serial.available() > 0 && !q.isFull()) {
         	// System.out.println(serial.available());
             q.push(serial.read());
         }
@@ -151,7 +173,6 @@ public class MwcSerial {
 
         public static final byte MSP_IAN               = 50       ;  //out message
         public static final byte MSP_RPI               = 51       ;  //out message
-        public static final byte MSP_SET_ALT_HOLD      = 52       ;  //out message
         
         public static final byte MSP_IDENT             = 100      ;  //out message         multitype + multiwii version + protocol version + capability variable
         public static final byte MSP_STATUS            = 101      ;  //out message         cycletime & errors_count & sensor present & box activation & current setting number
