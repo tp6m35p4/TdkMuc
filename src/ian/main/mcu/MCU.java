@@ -12,6 +12,8 @@ import com.sun.xml.internal.ws.Closeable;
 
 import ian.main.LedAndOtherController;
 import ian.main.MainStart;
+import ian.main.capture.CaptureAdapter;
+import ian.main.capture.OpenCameraFailedException;
 import ian.main.serial.MwcSerialAdapter;
 import ian.main.serial.exception.DataNotReadyException;
 import ian.main.serial.exception.NoConnectedException;
@@ -20,13 +22,14 @@ import ian.main.serial.exception.UnknownErrorException;
 
 public class MCU implements Closeable {
 	
-	public static final boolean isTest = false;
+	public static final boolean isTest = true;
 	
 	/* 高度誤差範圍 */
 	static final int altError = 20;
 	
 	static MwcSerialAdapter mwc;
 	static LedAndOtherController loc;
+	static CaptureAdapter ca;
 	// static TempLed led;
 	
 	static MwcData info = MainStart.info;
@@ -317,7 +320,8 @@ public class MCU implements Closeable {
 	}
 	
 	
-	public MCU setup() throws UnsupportedBoardType, IOException, InterruptedException, UnsupportedBusNumberException {
+	public MCU setup() throws UnsupportedBoardType, IOException, InterruptedException, UnsupportedBusNumberException, OpenCameraFailedException {
+		ca = new CaptureAdapter().setup();
 		if (isTest) return this;
 		mwc = new MwcSerialAdapter().open();
 		loc = new LedAndOtherController().init();
@@ -327,7 +331,14 @@ public class MCU implements Closeable {
 	
 	
 	public boolean loop() {
+		
+		
+		
+		ca.loop();
+
 		if (isTest) return true;
+		
+		
 		
 		setRc.reset();
 		

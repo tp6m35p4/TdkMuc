@@ -5,9 +5,12 @@ import java.util.Date;
 
 import javax.xml.ws.WebServiceException;
 
+import org.opencv.core.Mat;
+
 import com.pi4j.io.gpio.exception.UnsupportedBoardType;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
+import ian.main.capture.OpenCameraFailedException;
 import ian.main.mcu.MCU;
 import ian.main.mcu.MwcData;
 import ian.main.mcu.MwcSetData;
@@ -32,7 +35,13 @@ public class MainStart {
 	public static int cycleTime;
 	public static int debug0, debug1, debug2, debug3, debug4, debug5, debug6, debug7;
 	
-	public static MsgStruct msgStruct = MsgIndex.STOP;;
+	public static MsgStruct msgStruct = MsgIndex.STOP;
+	
+	
+	
+	public static Mat f;
+	
+	
 	
 	
 	public static void run(String[] args) {
@@ -60,7 +69,7 @@ public class MainStart {
 				time = time2;
 			}
 			System.out.println("bye~");
-		} catch (WebServiceException | IOException | UnsupportedBoardType | InterruptedException | UnsupportedBusNumberException e) {
+		} catch (WebServiceException | IOException | UnsupportedBoardType | InterruptedException | UnsupportedBusNumberException | OpenCameraFailedException e) {
 			e.printStackTrace();
 		}
 	}

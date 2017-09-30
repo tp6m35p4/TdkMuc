@@ -15,6 +15,6 @@
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/pi4j-gpio-extension-javadoc.jar"/>
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/pi4j-gpio-extension-sources.jar"/>
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/pi4j-gpio-extension.jar"/>
-	<classpathentry kind="lib" path="C:/Users/tp6m3/Desktop/opencv2/build/java/opencv-330.jar"/>
+	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/opencv-330.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
