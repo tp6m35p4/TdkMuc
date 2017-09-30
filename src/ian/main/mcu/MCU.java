@@ -22,7 +22,7 @@ import ian.main.serial.exception.UnknownErrorException;
 
 public class MCU implements Closeable {
 	
-	public static final boolean isTest = true;
+	public static final boolean isTest = false;
 	
 	/* 高度誤差範圍 */
 	static final int altError = 20;
@@ -321,8 +321,8 @@ public class MCU implements Closeable {
 	
 	
 	public MCU setup() throws UnsupportedBoardType, IOException, InterruptedException, UnsupportedBusNumberException, OpenCameraFailedException {
-		ca = new CaptureAdapter().setup();
 		if (isTest) return this;
+		ca = new CaptureAdapter().setup();
 		mwc = new MwcSerialAdapter().open();
 		loc = new LedAndOtherController().init();
 		return this;
@@ -331,14 +331,10 @@ public class MCU implements Closeable {
 	
 	
 	public boolean loop() {
-		
-		
-		
-		ca.loop();
-
 		if (isTest) return true;
 		
 		
+		ca.loop();
 		
 		setRc.reset();
 		

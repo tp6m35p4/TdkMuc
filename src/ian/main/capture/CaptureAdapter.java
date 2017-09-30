@@ -7,9 +7,12 @@ import org.opencv.videoio.Videoio;
 
 public class CaptureAdapter {
 	private VideoCapture camera;
+	
 	static {
+		// System.load("/home/pi/opencv/build1/lib/libopencv_java330.so");
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 	}
+	
 	public CaptureAdapter setup() throws OpenCameraFailedException {
 		
 		// Core.setErrorVerbosity(false);
