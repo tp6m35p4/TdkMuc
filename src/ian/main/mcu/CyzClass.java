@@ -48,5 +48,6 @@ public class CyzClass {
 		Imgproc.cvtColor(f, grayImage, Imgproc.COLOR_BGR2GRAY);
 		Imgproc.blur(grayImage, detectedEdges, new Size(3, 3));
 		
+		
 	}
 }
