@@ -1,5 +1,6 @@
-package ian.main;
+package ian.main.mcu;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.util.Date;
 
@@ -9,6 +10,8 @@ import com.pi4j.io.gpio.exception.UnsupportedBoardType;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 import com.sun.xml.internal.ws.Closeable;
 
+import ian.main.LedAndOtherController;
+import ian.main.MainStart;
 import ian.main.serial.MwcSerialAdapter;
 import ian.main.serial.exception.DataNotReadyException;
 import ian.main.serial.exception.NoConnectedException;
@@ -17,7 +20,7 @@ import ian.main.serial.exception.UnknownErrorException;
 
 public class MCU implements Closeable {
 	
-	public static final boolean isTest = true;
+	public static final boolean isTest = false;
 	
 	/* 高度誤差範圍 */
 	static final int altError = 20;
@@ -38,11 +41,23 @@ public class MCU implements Closeable {
 	public static int setWantAlt = 0;
 
 	
+	static class ControlMode {
+		static final int RELEASE = 0;
+		static final int STOP = 1;
+		static final int WORK = 2;
+	}
 	
-	// ----------------throttle---------------------
+	
+	// ------------------throttle-------------------
 	public static int throttleHoldValue;
 	static int throttleValue = 0;
-	// ----------------throttle---------------------
+	// ------------------throttle-------------------
+	
+	
+	// ------------------yaw------------------------
+	static int yawMode = ControlMode.RELEASE;
+	static int yawFixAngle = 0;
+	// ------------------yaw------------------------
 	
 	
 	// ------------------time-----------------------
@@ -60,40 +75,43 @@ public class MCU implements Closeable {
 	
 	
 	// ------------------mode flag------------------
-	static int armMode = 0;
-	static int baroMode = 0;
+	static int armMode = ControlMode.RELEASE;
+	static int baroMode = ControlMode.RELEASE;
+	static int ledMode = ControlMode.RELEASE;
 	// ------------------mode flag------------------
 	
 	static int choose(int index, int defaultData, int... data) {
 		return index < data.length ? data[index] : defaultData;
 	}
-	
-	static void setMsg(int index) {
-		switch (index) {
-		case 0:
-			MainStart.level = 0;
-			MainStart.msgStr = "Stop.";
-			break;
-		case 1:
-			MainStart.level = 0;
-			MainStart.msgStr = "Run.";
-			break;
-			
-		case 2:
-			MainStart.level = 1;
-			MainStart.msgStr = "Wait ok_to_arm...";
-			break;
-		case 3:
-			MainStart.level = 1;
-			MainStart.msgStr = "Wait angle_mode...";
-			break;
-		case 4:
-			MainStart.level = 1;
-			MainStart.msgStr = "Wait ok_to_arm and angle_mode...";
-			break;
-		default:
-			throw new RuntimeException("unknown error.");
+	public static class MsgIndex {
+		public static class MsgStruct {
+			public final int level;
+			public final String msgStr;
+			public MsgStruct(int level, String msgStr) {
+				this.level = level;
+				this.msgStr = msgStr;
+			}
 		}
+		public static final MsgStruct STOP           = new MsgStruct(0, "等待");
+		public static final MsgStruct RUN            = new MsgStruct(0, "動作中");
+		
+		public static final MsgStruct WAIT_MODE_1    = new MsgStruct(1, "等待 ok_to_arm...");
+		public static final MsgStruct WAIT_MODE_2    = new MsgStruct(1, "等待 angle_mode...");
+		public static final MsgStruct WAIT_MODE_3    = new MsgStruct(1, "等待 ok_to_arm 和 angle_mode...");
+		
+		public static final MsgStruct READY_FLY      = new MsgStruct(0, "準備起飛");
+		public static final MsgStruct FORCE_FLY      = new MsgStruct(0, "起飛中");
+		public static final MsgStruct WAIT_TO_BARO   = new MsgStruct(0, "等待至定高點");
+		
+		public static final MsgStruct FOLLOW_LINE    = new MsgStruct(0, "循線中");
+		
+		public static final MsgStruct LANDING        = new MsgStruct(0, "降落中");
+		public static final MsgStruct LANDED         = new MsgStruct(0, "降落完成");
+		
+		
+		public static final MsgStruct CAN_NOT_FLY    = new MsgStruct(2, "無法起飛");
+		
+		
 	}
 	
 	
@@ -101,35 +119,25 @@ public class MCU implements Closeable {
 		switch (step) {
 		case 0:
 			step = 1;
-			armMode = 1;
-			baroMode = 1;
+			armMode = ControlMode.STOP;
+			baroMode = ControlMode.STOP;
 			
-			setMsg(1);
+			MainStart.msgStruct = MsgIndex.RUN;
 			break;
 		case 1:
-			if (info.ok_to_arm && info.angle_mode) {
-				step = 10;
-			} else {
-				int tmp = (info.ok_to_arm ? 1 : 0) + (info.angle_mode ? 2 : 0);
-				switch (tmp) {
-				case 0: setMsg(1); break;
-				case 1: setMsg(2); break;
-				case 2: setMsg(3); break;
-				case 3: setMsg(4); break;
-				default: throw new RuntimeException("unknown error.");
-				}
-				if (!info.ok_to_arm) {
-					System.out.println("waitting ok_to_arm...");
-				}
-				if (!info.angle_mode) {
-					System.out.println("waitting angle_mode...");
-				}
+			switch ((info.ok_to_arm ? 1 : 0) + (info.angle_mode ? 2 : 0)) {
+			case 3: MainStart.msgStruct = MsgIndex.RUN; step = 10; break;
+			case 2: MainStart.msgStruct = MsgIndex.WAIT_MODE_1; break;
+			case 1: MainStart.msgStruct = MsgIndex.WAIT_MODE_2; break;
+			case 0: MainStart.msgStruct = MsgIndex.WAIT_MODE_3; break;
+			default: throw new RuntimeException("unknown error.");
 			}
 			break;
 		case 10: // 解鎖油門
-			armMode = 2;
+			armMode = ControlMode.WORK;
 			throttleValue = 1098;
 			if (info.armed) {
+				MainStart.msgStruct = MsgIndex.READY_FLY;
 				createTimer();
 				step = 11;				
 			}
@@ -138,14 +146,17 @@ public class MCU implements Closeable {
 			if (timerOn(1500)) {
 				step = 12;
 				throttleValue = 1500;
+				MainStart.msgStruct = MsgIndex.FORCE_FLY;
 			}
 			break;
 		case 12: // 起飛
-			if (info.altEstAlt == 0) {
-				throttleValue += 10;
-			}
-			
-			if (info.altEstAlt > 20) {
+			if (info.altEstAlt < 10) {
+				if (throttleValue < 1850) {
+					throttleValue += 10;
+				} else {
+					step = 500;
+				}
+			} else if (info.altEstAlt > 20) {
 				throttleHoldValue = throttleValue;
 				createTimer();
 				step = 1012;
@@ -154,10 +165,11 @@ public class MCU implements Closeable {
 		case 1012:
 			if (timerOn(100)) {
 				step = 13;
+				MainStart.msgStruct = MsgIndex.WAIT_TO_BARO;
 			}
 			break;
 		case 13: // 設定高度200cm
-			baroMode = 2;
+			baroMode = ControlMode.WORK;
 			if (info.baro_mode) {
 				setWantAlt = 80;
 				step = 14;
@@ -166,6 +178,7 @@ public class MCU implements Closeable {
 		case 14: // 等待至200
 			if (Math.abs(info.altEstAlt - setWantAlt) <= altError) {
 				step = 15;
+				MainStart.msgStruct = MsgIndex.FOLLOW_LINE;
 			}
 			break;
 		case 15:
@@ -173,13 +186,16 @@ public class MCU implements Closeable {
 			step = 16;
 			break;
 		case 16:
-			if (timerOn(15000)) {
+			if (info.extraRc[0] > 1700) {
 				step = 100;
+				yawMode = ControlMode.RELEASE;
 			}
+			yawMode = info.extraRc[1] > 1700 ? ControlMode.WORK : ControlMode.RELEASE;
 			break;
 		case 100: // 終點降落
 			setWantAlt = 0;
 			step = 101;
+			MainStart.msgStruct = MsgIndex.LANDING;
 			break;
 		case 101:
 			if (info.altEstAlt < 5) {
@@ -188,8 +204,15 @@ public class MCU implements Closeable {
 			break;
 		case 102: // 上鎖油門
 			throttleValue = 1098;
-			armMode = 1;
-			baroMode = 1;
+			armMode = ControlMode.STOP;
+			baroMode = ControlMode.STOP;
+			MainStart.msgStruct = MsgIndex.LANDED;
+			break;
+		case 500:
+			throttleValue = 1098;
+			armMode = ControlMode.STOP;
+			baroMode = ControlMode.STOP;
+			MainStart.msgStruct = MsgIndex.CAN_NOT_FLY;
 			break;
 		default:
 			break;
@@ -213,32 +236,52 @@ public class MCU implements Closeable {
 			setRc.setThrottle(throttleValue);
 		}
 		
-		
+		switch (yawMode) {
+		case ControlMode.RELEASE:
+			setRc.setYaw(0);
+			break;
+		case ControlMode.STOP:
+			setRc.setYaw(1500);
+			break;
+		case ControlMode.WORK:
+			int tmp = 1500 + yawFixAngle * 1;
+			if (tmp > 1850) {
+				tmp = 1850;
+			}
+			if (tmp < 1100) {
+				tmp = 1100;
+			}
+			setRc.setYaw(tmp);
+			break;
+		default:
+			setRc.setYaw(0);
+			break;
+		}
 		
 		
 		CyzClass.mode();
 		
-//		switch (ledMode) {
-//		case 1:
-//			loc.setAllLed(Color.BLACK);
-//			if (getTime() - ledStepTime > 200) {
-//				ledStepTime = getTime();
-//				loc.setLed(ledStep, Color.RED);
-//				if (++ledStep >= 2) {
-//					ledStep = 0;
-//				}
-//			}
-//			break;
-//		case 2:
-//			loc.setAllLed(Color.GREEN);
-//			break;
-//		case 3:
-//			loc.setLed(0, Color.RED).setLed(1, Color.GREEN);
-//			break;
-//		default:
-//			loc.setAllLed(Color.BLACK);
-//			break;
-//		}
+		switch (ledMode) {
+		case 1:
+			loc.setAllLed(Color.BLACK);
+			if (getTime() - ledStepTime > 200) {
+				ledStepTime = getTime();
+				loc.setLed(ledStep, Color.RED);
+				if (++ledStep >= 2) {
+					ledStep = 0;
+				}
+			}
+			break;
+		case 2:
+			loc.setAllLed(Color.GREEN);
+			break;
+		case 3:
+			loc.setLed(0, Color.GREEN).setLed(1, Color.RED);
+			break;
+		default:
+			loc.setAllLed(Color.BLACK);
+			break;
+		}
 		
 	}
 	
@@ -252,6 +295,25 @@ public class MCU implements Closeable {
 	
 	static long getTime() {
 		return new Date().getTime();
+	}
+	
+	
+	static void extra() {
+		yawFixAngle = MainStart.extraInfo[0] - info.att[2];
+		
+		if (yawFixAngle < -180) {
+			yawFixAngle += 360;
+		}
+		if (yawFixAngle > 180) {
+			yawFixAngle -= 360;
+		}
+		
+		MainStart.debug0 = MainStart.extraInfo[0];
+		MainStart.debug1 = info.att[2];
+		
+		MainStart.debug2 = yawFixAngle;
+		
+		MainStart.debug3 = yawMode;
 	}
 	
 	
@@ -293,15 +355,20 @@ public class MCU implements Closeable {
 		
 		
 		
+		
+		extra();
+		
+		
+		
 		if (info.extraRc[2] < 1700) { // ems
 			step = 0;
 			
 			throttleValue = 0;
-			armMode = 0;
-			baroMode = 0;
+			armMode = ControlMode.RELEASE;
+			baroMode = ControlMode.RELEASE;
+			ledMode = 0;
 			
-			MainStart.level = 1;
-			MainStart.msgStr = "Stop.";
+			MainStart.msgStruct = MsgIndex.STOP;
 		} else {
 			try {
 				stl();

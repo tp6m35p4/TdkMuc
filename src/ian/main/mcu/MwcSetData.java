@@ -1,4 +1,4 @@
-package ian.main;
+package ian.main.mcu;
 
 public class MwcSetData {
 	private short roll,pitch,yaw,throttle,aux1,aux2,aux3,aux4;

@@ -1,4 +1,4 @@
-package ian.main;
+package ian.main.mcu;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

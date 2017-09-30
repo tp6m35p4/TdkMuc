@@ -13,8 +13,8 @@ import javax.xml.ws.WebServiceException;
 
 import com.sun.xml.internal.ws.Closeable;
 
-import ian.main.MCU;
 import ian.main.MainStart;
+import ian.main.mcu.MCU;
 
 public class SurveillanceController implements Closeable {
 	public static final int LISTEN_PORT = 5987;
@@ -96,7 +96,7 @@ public class SurveillanceController implements Closeable {
 			case Cmd.CMD_GET_RPI_INFO:
 				ByteBuffer buffer = ByteBuffer.allocate(45).order(ByteOrder.LITTLE_ENDIAN);
 				buffer.putInt(MCU.step).putInt(MCU.setWantAlt);
-				buffer.putInt(MainStart.cycleTime).put(MainStart.level);
+				buffer.putInt(MainStart.cycleTime).put((byte)MainStart.msgStruct.level);
 				buffer.putInt(MainStart.debug0).putInt(MainStart.debug1);
 				buffer.putInt(MainStart.debug2).putInt(MainStart.debug3);
 				buffer.putInt(MainStart.debug4).putInt(MainStart.debug5);
@@ -106,7 +106,7 @@ public class SurveillanceController implements Closeable {
 				data = buffer.array();
 				break;
 			case Cmd.CMD_GET_MSG:
-				data = MainStart.msgStr.getBytes();
+				data = MainStart.msgStruct.msgStr.getBytes();
 				break;
 			case Cmd.CMD_SET_STATUS:
 				data = new byte[]{0};

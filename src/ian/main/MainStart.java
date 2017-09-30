@@ -8,6 +8,11 @@ import javax.xml.ws.WebServiceException;
 import com.pi4j.io.gpio.exception.UnsupportedBoardType;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
+import ian.main.mcu.MCU;
+import ian.main.mcu.MwcData;
+import ian.main.mcu.MwcSetData;
+import ian.main.mcu.MCU.MsgIndex;
+import ian.main.mcu.MCU.MsgIndex.MsgStruct;
 import ian.main.surveillance.SurveillanceController;
 
 public class MainStart {
@@ -27,8 +32,7 @@ public class MainStart {
 	public static int cycleTime;
 	public static int debug0, debug1, debug2, debug3, debug4, debug5, debug6, debug7;
 	
-	public static byte level;
-	public static String msgStr = "tmp123";
+	public static MsgStruct msgStruct = MsgIndex.STOP;;
 	
 	
 	public static void run(String[] args) {

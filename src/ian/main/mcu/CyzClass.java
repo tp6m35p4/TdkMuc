@@ -1,4 +1,6 @@
-package ian.main;
+package ian.main.mcu;
+
+import ian.main.MainStart;
 
 public class CyzClass {
 	
