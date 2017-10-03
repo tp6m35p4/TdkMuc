@@ -6,6 +6,8 @@ import java.nio.ByteOrder;
 public class MwcData {
 	public static final int DATA_LEN = 57;
 	public static final int OTHER_DATA_LEN = 12;
+	public static final int CAPTURE_DATA_LEN = 7;
+	
 	
 	
 	public short[] motor = new short[8];
@@ -25,6 +27,13 @@ public class MwcData {
     public short sonarLeft;
     public short sonarRight;
     public short[] extraRc = new short[3];
+    
+    
+    public byte captureStatus;
+    public short captureDeltaX;
+    public short captureDeltaY;
+    public short captureAngle;
+    
     
     
     public MwcData setData(byte[] data) {
@@ -111,6 +120,29 @@ public class MwcData {
     	for (int i = 0; i < 3; i++) {
     		byteBuffer.putShort(extraRc[i]);
     	}
+    	
+    	
+    	return byteBuffer.array();
+    }
+    
+    public MwcData setCaptureData(byte[] data) {
+    	if (data.length != CAPTURE_DATA_LEN) {
+    		throw new RuntimeException("CAPTURE_DATA_LEN = " + String.valueOf(CAPTURE_DATA_LEN) + " , data.length = " + String.valueOf(data.length));
+    	}
+    	ByteBuffer byteBuffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
+    	captureStatus = byteBuffer.get();
+    	captureDeltaX = byteBuffer.getShort();
+    	captureDeltaY = byteBuffer.getShort();
+    	captureAngle = byteBuffer.getShort();
+    	return this;
+    }
+    public byte[] getCaptureData() {
+    	ByteBuffer byteBuffer = ByteBuffer.allocate(CAPTURE_DATA_LEN).order(ByteOrder.LITTLE_ENDIAN);
+    	
+    	byteBuffer.put(captureStatus);
+    	byteBuffer.putShort(captureDeltaX);
+    	byteBuffer.putShort(captureDeltaY);
+    	byteBuffer.putShort(captureAngle);
     	
     	
     	return byteBuffer.array();

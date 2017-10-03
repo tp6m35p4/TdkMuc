@@ -13,7 +13,6 @@ import com.sun.xml.internal.ws.Closeable;
 import ian.main.LedAndOtherController;
 import ian.main.MainStart;
 import ian.main.capture.CaptureAdapter;
-import ian.main.capture.OpenCameraFailedException;
 import ian.main.serial.MwcSerialAdapter;
 import ian.main.serial.exception.DataNotReadyException;
 import ian.main.serial.exception.NoConnectedException;
@@ -74,6 +73,7 @@ public class MCU implements Closeable {
 	static int mwcError = 0;
 	static int ledError = 0;
 	static int modeError = 0;
+	static int pyError = 0;
 	// ------------------error flag-----------------
 	
 	
@@ -82,6 +82,11 @@ public class MCU implements Closeable {
 	static int baroMode = ControlMode.RELEASE;
 	static int ledMode = ControlMode.RELEASE;
 	// ------------------mode flag------------------
+	
+	
+	private static void print(String info) {
+		MainStart.print("MCU", info);
+	}
 	
 	static int choose(int index, int defaultData, int... data) {
 		return index < data.length ? data[index] : defaultData;
@@ -160,6 +165,7 @@ public class MCU implements Closeable {
 					step = 500;
 				}
 			} else if (info.altEstAlt > 20) {
+				throttleValue -= 30;
 				throttleHoldValue = throttleValue;
 				createTimer();
 				step = 1012;
@@ -221,7 +227,7 @@ public class MCU implements Closeable {
 			break;
 		}
 	}
-	static void mode() {
+	void mode() {
 		
 		setRc.setAux1(choose(armMode , 0, 0, 1098, 1898));
 		
@@ -320,7 +326,7 @@ public class MCU implements Closeable {
 	}
 	
 	
-	public MCU setup() throws UnsupportedBoardType, IOException, InterruptedException, UnsupportedBusNumberException, OpenCameraFailedException {
+	public MCU setup() throws UnsupportedBoardType, IOException, InterruptedException, UnsupportedBusNumberException {
 		if (isTest) return this;
 		ca = new CaptureAdapter().setup();
 		mwc = new MwcSerialAdapter().open();
@@ -334,7 +340,13 @@ public class MCU implements Closeable {
 		if (isTest) return true;
 		
 		
-		ca.loop();
+		try {
+			ca.loop();
+			pyError = 0;
+		} catch (IOException e1) {
+			pyError++;
+			e1.printStackTrace();
+		}
 		
 		setRc.reset();
 		
@@ -395,8 +407,8 @@ public class MCU implements Closeable {
 		}
 		
 		
-		if (ledError != 0 || modeError != 0 || (mwcError != 0 && (getTime() - mwcErrorTime > 800))) {
-			System.out.printf("ledError = %d\nmodeError = %d\nmwcError = %d\n", ledError, modeError, mwcError);
+		if (ledError != 0 || modeError != 0 || pyError != 0 || (mwcError != 0 && (getTime() - mwcErrorTime > 800))) {
+			System.out.printf("ledError = %d\nmodeError = %d\npyError = %d\nmwcError = %d\n", ledError, modeError, pyError, mwcError);
 			return false;
 		}
 		try {
@@ -412,14 +424,24 @@ public class MCU implements Closeable {
 	public void close() throws WebServiceException {
 		if (isTest) return;
 		try {
+			ca.close();
+		} catch (IOException e) {
+			print("[Close]: [ca]:");
+			e.printStackTrace();
+		}
+		try {
 			mwc.close();
 		} catch (IllegalStateException | IOException e) {
-			throw new WebServiceException(e);
+			print("[Close]: [mwc]:");
+			e.printStackTrace();
 		}
 		try {
 			loc.close();
 		} catch (IOException e) {
-			throw new WebServiceException(e);
+			print("[Close]: [loc]:");
+			e.printStackTrace();
 		}
+		
+		
 	}
 }

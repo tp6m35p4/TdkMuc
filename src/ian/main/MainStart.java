@@ -5,17 +5,14 @@ import java.util.Date;
 
 import javax.xml.ws.WebServiceException;
 
-import org.opencv.core.Mat;
-
 import com.pi4j.io.gpio.exception.UnsupportedBoardType;
 import com.pi4j.io.i2c.I2CFactory.UnsupportedBusNumberException;
 
-import ian.main.capture.OpenCameraFailedException;
 import ian.main.mcu.MCU;
-import ian.main.mcu.MwcData;
-import ian.main.mcu.MwcSetData;
 import ian.main.mcu.MCU.MsgIndex;
 import ian.main.mcu.MCU.MsgIndex.MsgStruct;
+import ian.main.mcu.MwcData;
+import ian.main.mcu.MwcSetData;
 import ian.main.surveillance.SurveillanceController;
 
 public class MainStart {
@@ -39,17 +36,21 @@ public class MainStart {
 	
 	
 	
-	public static Mat f;
+	public static byte[] captureExtraInfo = new byte[0];
 	
-	
+	private static void print(String info) {
+		MainStart.print("Main", info);
+	}
 	
 	
 	public static void run(String[] args) {
+		print("Setup.");
 		byte[] buffer = new byte[BUFFER_SIZE];
 		boolean isAlive = true;
 		try (SurveillanceController sc = new SurveillanceController().start();
 				MCU mcu = new MCU().setup()) {
 			long time = new Date().getTime();
+			print("Loop.");
 			while (isAlive) {
 				if (!mcu.loop()) break;
 				
@@ -68,10 +69,11 @@ public class MainStart {
 				cycleTime = (int) (time2 - time);
 				time = time2;
 			}
-			System.out.println("bye~");
-		} catch (WebServiceException | IOException | UnsupportedBoardType | InterruptedException | UnsupportedBusNumberException | OpenCameraFailedException e) {
+			print("Close.");
+		} catch (WebServiceException | IOException | UnsupportedBoardType | InterruptedException | UnsupportedBusNumberException e) {
 			e.printStackTrace();
 		}
+		print("Exit.");
 	}
 	
 	
@@ -121,6 +123,11 @@ public class MainStart {
 //			e.printStackTrace();
 //		}
 //	}
+	
+	
+	public static void print(String className, String info) {
+		System.out.println("[" + className + "]: " + info);
+	}
 }
 
 

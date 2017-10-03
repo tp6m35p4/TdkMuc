@@ -1,10 +1,7 @@
 package ian.main.surveillance;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -26,6 +23,9 @@ public class SurveillanceController implements Closeable {
     private Socket socket;
     private Thread thread;
     
+    private static void print(String info) {
+		MainStart.print("SurveillanceController", info);
+	}
     
 	public SurveillanceController start() throws IOException {
 		server = new ServerSocket(LISTEN_PORT);
@@ -36,7 +36,7 @@ public class SurveillanceController implements Closeable {
 	
 	@Override
 	public void close() throws WebServiceException {
-		System.out.println("[SurveillanceController]: Stop listen...");
+		print("Stop listen...");
 		try {
 			if (socket != null) socket.close();
 			server.close();
@@ -56,9 +56,9 @@ public class SurveillanceController implements Closeable {
 			
 			try {
 				while (true) {
-					System.out.println("[SurveillanceController]: Listening at port " + String.valueOf(LISTEN_PORT) + " ...");
+					print("Listening at port " + String.valueOf(LISTEN_PORT) + " ...");
 					socket = server.accept();
-					System.out.println("[SurveillanceController]: Connected...");
+					print("Connected...");
 					is = socket.getInputStream();
 					os = socket.getOutputStream();
 					
@@ -74,7 +74,7 @@ public class SurveillanceController implements Closeable {
 					is.close();
 					os.close();
 					socket.close();
-					System.out.println("[SurveillanceController]: Disconnected...");
+					print("Disconnected...");
 				}
 			} catch (SocketException e) {
 				
@@ -93,14 +93,11 @@ public class SurveillanceController implements Closeable {
 			case Cmd.CMD_GET_OTHER_INFO:
 				data = MainStart.info.getOtherData();
 				break;
-			case Cmd.CMD_GET_PIC:
-				ByteArrayOutputStream bos = new ByteArrayOutputStream();
-				ObjectOutput oo = new ObjectOutputStream(bos);
-				oo.writeObject(MainStart.f);
-				oo.flush();
-				data = bos.toByteArray();
-				oo.close();
-				bos.close();
+			case Cmd.CMD_GET_CAPTURE_INFO:
+				data = MainStart.info.getCaptureData();
+				break;
+			case Cmd.CMD_GET_CAPTURE_EXTRA_INFO:
+				data = MainStart.captureExtraInfo;
 				break;
 			case Cmd.CMD_GET_RPI_INFO:
 				ByteBuffer buffer = ByteBuffer.allocate(45).order(ByteOrder.LITTLE_ENDIAN);
@@ -133,7 +130,7 @@ public class SurveillanceController implements Closeable {
 				data = new byte[]{0};
 				break;
 			}
-			os.write(data.length);
+			os.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(data.length).array());
 			os.write(data);
 			os.flush();
 //			for (int i = 0; i < data.length; i++) {

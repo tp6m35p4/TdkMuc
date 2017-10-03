@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.fx.ide.jdt.core.JAVAFX_CONTAINER"/>
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/junit.jar"/>
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/pi4j-core-javadoc.jar"/>
 	<classpathentry kind="lib" path="/Users/ian/Documents/making/project/TDK_21th/pi4j-1.2-SNAPSHOT/lib/pi4j-core-sources.jar"/>
